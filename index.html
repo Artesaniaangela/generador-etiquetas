@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador de Etiquetas 10x15</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
     <!-- Librería para garantizar la descarga de la imagen PNG -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -513,5 +515,44 @@
             }
         }
     </script>
+
+<!-- Diseño de la notificación de instalación -->
+    <div id="install-banner" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2563eb; color: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); z-index: 1000; align-items: center; gap: 15px; width: 90%; max-width: 400px; font-size: 14px;">
+        <span style="flex-grow: 1;">Instala esta app en tu celular para acceso rápido.</span>
+        <button id="install-btn" style="background: white; color: #2563eb; padding: 8px 12px; margin: 0; border-radius: 5px;">Instalar</button>
+        <button id="close-btn" style="background: transparent; color: white; padding: 5px; margin: 0; font-size: 18px; box-shadow: none;">✖</button>
+    </div>
+
+    <script>
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        // Lógica de Instalación
+        let deferredPrompt;
+        const installBanner = document.getElementById('install-banner');
+        const installBtn = document.getElementById('install-btn');
+        const closeBtn = document.getElementById('close-btn');
+
+        // Escucha cuando el navegador detecta que es instalable
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // Evita el aviso por defecto
+            deferredPrompt = e; // Guarda el evento
+            installBanner.style.display = 'flex'; // Muestra tu notificación personalizada
+        });
+
+        installBtn.addEventListener('click', async () => {
+            installBanner.style.display = 'none'; // Oculta tu aviso
+            deferredPrompt.prompt(); // Muestra el aviso nativo del celular
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+        });
+
+        closeBtn.addEventListener('click', () => {
+            installBanner.style.display = 'none';
+        });
+    </script>
+    
 </body>
 </html>
