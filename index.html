@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Etiquetas 10x15</title>
+    <!-- Versión local: no carga librerías ni recursos de Internet. -->
+    <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --border: #e5e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 30px;
+        }
+
+        /* PANEL DE CONTROL */
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .controls h2 { margin: 0 0 10px 0; font-size: 18px; text-align: center; }
+        .controls label { font-size: 12px; font-weight: bold; color: #374151; }
+        
+        .controls input, .controls select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            margin-top: 4px;
+        }
+
+        .row { display: flex; gap: 10px; }
+        .buttons-container { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button.print-btn { background-color: #059669; }
+        button.print-btn:hover { background-color: #047857; }
+
+        /* ÁREA DE VISTA PREVIA */
+        .preview-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ETIQUETA EXACTA 150x100mm */
+        .label-container {
+            width: 150mm;
+            height: 100mm;
+            background: white;
+            padding: 8mm;
+            border-radius: 10px;
+            border: 3px solid black;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Cabecera de la etiqueta */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            height: 17mm;
+            margin-bottom: 1mm;
+            overflow: hidden;
+        }
+
+        .logo-area {
+            width: 45%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .logo-area img {
+            max-width: 100%;
+            max-height: 15mm;
+            object-fit: contain;
+        }
+
+        .sender-info {
+            width: 50%;
+            text-align: right;
+            font-size: 9px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+
+        /* Título central */
+        .title-divider {
+            border-top: 2px solid black;
+            margin: 0 0 3px 0;
+        }
+
+        .title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 15px;
+            letter-spacing: 2px;
+            margin: 2px 0 6px 0;
+            text-decoration: underline;
+        }
+
+        /* Campos de llenado alineados */
+        .fields {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: flex-end;
+            margin-bottom: 4px;
+        }
+
+        .field-label {
+            font-weight: bold;
+            font-size: 15px; /* Aumentado */
+            width: 120px; 
+            white-space: nowrap;
+        }
+
+        .field-value {
+            flex-grow: 1;
+            border-bottom: 1px solid black;
+            min-height: 20px;
+            font-size: 17px; /* Aumentado (antes 14px) */
+            color: #0021a5;
+            font-weight: bold;
+            padding-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .depto-container {
+            display: flex;
+            align-items: flex-end;
+            margin-left: 10px;
+            min-width: 80px;
+        }
+
+        .depto-container .field-label {
+            width: auto;
+            margin-right: 5px;
+        }
+
+        /* CONFIGURACIÓN DE IMPRESIÓN */
+        @media print {
+            body { background: white; margin: 0; padding: 0; display: block; }
+            .controls { display: none; }
+            .preview-area { display: block; box-shadow: none; margin: 0; }
+            .label-container {
+                border: 2px solid black;
+                box-shadow: none;
+                margin: 0;
+                page-break-after: always;
+            }
+        }
+        @page {
+            size: 150mm 100mm;
+            margin: 0;
+        }
+        
+        /* Ajuste para celulares */
+        @media (max-width: 800px) {
+            body { flex-direction: column; align-items: center; }
+            .label-container { transform: scale(0.85); transform-origin: top center; margin-bottom: -15mm; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h2>Datos del Envío</h2>
+
+        <div style="flex: 1;">
+            <label>RUT</label>
+            <input type="text" id="in-rut" oninput="updateLabel()" placeholder="Ej: 12.345.678-9">
+        </div>
+
+        <div>
+            <label>Destinatario</label>
+            <input type="text" id="in-destinatario" oninput="updateLabel()" placeholder="Ej: Juan Pérez">
+        </div>
+
+        <div class="row">
+            <div style="flex: 1;">
+                <label>Teléfono</label>
+                <input type="text" id="in-telefono" oninput="updateLabel()" placeholder="+56 9...">
+            </div>
+            <div style="flex: 1;">
+                <label>Ciudad / Comuna</label>
+                <input type="text" id="in-ciudad" oninput="updateLabel()" placeholder="Ej: Providencia">
+            </div>
+        </div>
+
+        <div class="row">
+            <div style="flex: 2;">
+                <label>Dirección</label>
+                <input type="text" id="in-direccion" oninput="updateLabel()" placeholder="Calle y número">
+            </div>
+            <div style="flex: 1;">
+                <label>Depto / N°</label>
+                <input type="text" id="in-depto" oninput="updateLabel()" placeholder="Ej: 704">
+            </div>
+        </div>
+
+        <div class="row">
+            <div style="flex: 1;">
+                <label>Observaciones</label>
+                <input type="text" id="in-observaciones" oninput="updateLabel()" placeholder="Ej: Portón negro">
+            </div>
+        </div>
+
+        <div>
+            <label>Región (Chile)</label>
+            <select id="in-region" onchange="updateLabel()">
+                <option value="">Seleccione región...</option>
+                <option value="Arica y Parinacota">Arica y Parinacota</option>
+                <option value="Tarapacá">Tarapacá</option>
+                <option value="Antofagasta">Antofagasta</option>
+                <option value="Atacama">Atacama</option>
+                <option value="Coquimbo">Coquimbo</option>
+                <option value="Valparaíso">Valparaíso</option>
+                <option value="Metropolitana">Metropolitana</option>
+                <option value="O'Higgins">O'Higgins</option>
+                <option value="Maule">Maule</option>
+                <option value="Ñuble">Ñuble</option>
+                <option value="Biobío">Biobío</option>
+                <option value="La Araucanía">La Araucanía</option>
+                <option value="Los Ríos">Los Ríos</option>
+                <option value="Los Lagos">Los Lagos</option>
+                <option value="Aysén">Aysén</option>
+                <option value="Magallanes">Magallanes</option>
+            </select>
+        </div>
+
+        <div class="buttons-container">
+            <button class="print-btn" onclick="window.print()">🖨️ Imprimir Directo</button>
+            <button onclick="downloadImage()">🖼️ Descargar Imagen (.PNG)</button>
+            <button onclick="downloadPDF()">📄 Descargar PDF</button>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div class="label-container" id="label-export-area">
+            
+            <div class="header">
+                <div class="logo-area">
+                    <img id="logo-preview" src="data:image/jpeg;base64,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" alt="Logo" style="display: block; max-width: 100%; max-height: 15mm;">
+                    <div id="logo-placeholder" style="display: none;">LOGO</div>
+                </div>
+                <div class="sender-info">
+                    LUIGGI MAMANI LOPEZ<br>
+                    RUT: 25.807.878-0<br>
+                    SANTO DOMINGO 784 LOCAL 14-24<br>
+                    CEL: +56945081094<br>
+                    LUIGGI01995@GMAIL.COM
+                </div>
+            </div>
+
+            <div class="title-divider"></div>
+            <div class="title">DATOS DE ENVIO</div>
+
+            <div class="fields">
+                <div class="field-row">
+                    <span class="field-label">DESTINATARIO:</span>
+                    <div class="field-value" id="out-destinatario"></div>
+                </div>
+
+                <div class="field-row" id="row-rut" style="display: none;">
+                    <span class="field-label">RUT:</span>
+                    <div class="field-value" id="out-rut"></div>
+                </div>
+
+                <div class="field-row">
+                    <span class="field-label">TELÉFONO:</span>
+                    <div class="field-value" id="out-telefono"></div>
+                </div>
+
+                <div class="field-row">
+                    <span class="field-label">DIRECCIÓN:</span>
+                    <div class="field-value" id="out-direccion"></div>
+                    
+                    <div class="depto-container" id="box-depto" style="display: none;">
+                        <span class="field-label">DEPTO/OF:</span>
+                        <div class="field-value" id="out-depto"></div>
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <span class="field-label">CIUDAD:</span>
+                    <div class="field-value" id="out-ciudad"></div>
+                </div>
+
+                <div class="field-row">
+                    <span class="field-label">REGIÓN:</span>
+                    <div class="field-value" id="out-region"></div>
+                </div>
+
+                <div class="field-row" id="row-observaciones" style="display: none;">
+                    <span class="field-label">OBSERVAC.:</span>
+                    <div class="field-value" id="out-observaciones"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Actualizar datos de la etiqueta
+        function updateLabel() {
+            document.getElementById('out-destinatario').innerText = document.getElementById('in-destinatario').value;
+            document.getElementById('out-telefono').innerText = document.getElementById('in-telefono').value;
+            document.getElementById('out-direccion').innerText = document.getElementById('in-direccion').value;
+            document.getElementById('out-ciudad').innerText = document.getElementById('in-ciudad').value;
+            document.getElementById('out-region').innerText = document.getElementById('in-region').value;
+
+            // Manejo del Departamento
+            const deptoValue = document.getElementById('in-depto').value;
+            const deptoBox = document.getElementById('box-depto');
+            if(deptoValue.trim() !== '') {
+                deptoBox.style.display = 'flex';
+                document.getElementById('out-depto').innerText = deptoValue;
+            } else {
+                deptoBox.style.display = 'none';
+            }
+
+            // Lógica para mostrar/ocultar RUT
+            const rutValue = document.getElementById('in-rut').value;
+            const rutBox = document.getElementById('row-rut');
+            if(rutValue.trim() !== '') {
+                rutBox.style.display = 'flex';
+                document.getElementById('out-rut').innerText = rutValue;
+            } else {
+                rutBox.style.display = 'none';
+            }
+
+            // Lógica para mostrar/ocultar Observaciones
+            const obsValue = document.getElementById('in-observaciones').value;
+            const obsBox = document.getElementById('row-observaciones');
+            if(obsValue.trim() !== '') {
+                obsBox.style.display = 'flex';
+                document.getElementById('out-observaciones').innerText = obsValue;
+            } else {
+                obsBox.style.display = 'none';
+            }
+        }
+
+        // Exportación PNG sin librerías externas.
+        function copyComputedStyles(source, target) {
+            const computed = getComputedStyle(source);
+            for (const prop of computed) target.style.setProperty(prop, computed.getPropertyValue(prop), computed.getPropertyPriority(prop));
+            const sourceChildren = source.children;
+            const targetChildren = target.children;
+            for (let i = 0; i < sourceChildren.length; i++) {
+                if (targetChildren[i]) copyComputedStyles(sourceChildren[i], targetChildren[i]);
+            }
+        }
+
+        async function downloadImage() {
+            const element = document.getElementById('label-export-area');
+            const clone = element.cloneNode(true);
+            copyComputedStyles(element, clone);
+            clone.style.margin = '0';
+            clone.style.transform = 'none';
+            clone.style.width = '150mm';
+            clone.style.height = '100mm';
+            const wrapper = document.createElement('div');
+            wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+            wrapper.appendChild(clone);
+            const markup = new XMLSerializer().serializeToString(wrapper);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1772" height="1181" viewBox="0 0 1500 1000"><foreignObject width="1500" height="1000">${markup}</foreignObject></svg>`;
+            const blob = new Blob([svg], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1772; canvas.height = 1181;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+                canvas.toBlob(function(pngBlob) {
+                    if (!pngBlob) { alert('Este navegador no pudo generar el PNG. Usa Imprimir / Guardar como PDF.'); return; }
+                    const link = document.createElement('a');
+                    link.download = 'Etiqueta_Envio.png';
+                    link.href = URL.createObjectURL(pngBlob);
+                    link.click();
+                    setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+                }, 'image/png');
+            };
+            img.onerror = function() {
+                URL.revokeObjectURL(url);
+                alert('Este navegador no permite exportar esta etiqueta como PNG desde un archivo local. Usa Imprimir / Guardar como PDF.');
+            };
+            img.src = url;
+        }
+
+        // Genera y descarga un PDF localmente, sin librerías ni conexión a Internet.
+        async function downloadPDF() {
+            try {
+                const mm = 72 / 25.4;
+                const pageW = 150 * mm, pageH = 100 * mm;
+                const ops = [];
+                const esc = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+                const txt = (s, x, top, size=8, bold=false, color='0 0 0') => {
+                    s = String(s ?? '').trim();
+                    if (!s) return;
+                    ops.push(`${color} rg BT /${bold ? 'F2' : 'F1'} ${size} Tf 1 0 0 1 ${(x*mm).toFixed(2)} ${(pageH-top*mm).toFixed(2)} Tm (${esc(s)}) Tj ET`);
+                };
+                const line = (x1, y1, x2, y2, width=0.6) => ops.push(`0 0 0 RG ${width} w ${(x1*mm).toFixed(2)} ${(pageH-y1*mm).toFixed(2)} m ${(x2*mm).toFixed(2)} ${(pageH-y2*mm).toFixed(2)} l S`);
+                const rect = (x,y,w,h,width=1) => ops.push(`0 0 0 RG ${width} w ${(x*mm).toFixed(2)} ${(pageH-(y+h)*mm).toFixed(2)} ${(w*mm).toFixed(2)} ${(h*mm).toFixed(2)} re S`);
+                rect(1.1,1.1,147.8,97.8,0.8);
+
+                let imageObject = null;
+                const logo = document.getElementById('logo-preview');
+                if (logo && logo.style.display !== 'none' && logo.src) {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const maxW = 420, maxH = 140;
+                        const ratio = Math.min(maxW / (logo.naturalWidth || 1), maxH / (logo.naturalHeight || 1), 1);
+                        canvas.width = Math.max(1, Math.round((logo.naturalWidth || 1) * ratio));
+                        canvas.height = Math.max(1, Math.round((logo.naturalHeight || 1) * ratio));
+                        const cx = canvas.getContext('2d');
+                        cx.fillStyle = '#ffffff'; cx.fillRect(0,0,canvas.width,canvas.height);
+                        cx.drawImage(logo,0,0,canvas.width,canvas.height);
+                        const b64 = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
+                        const raw = atob(b64); const bytes = new Uint8Array(raw.length);
+                        for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
+                        imageObject = {bytes, w:canvas.width, h:canvas.height};
+                        ops.push(`q ${(45*mm).toFixed(2)} 0 0 ${(15*mm).toFixed(2)} ${(8*mm).toFixed(2)} ${(pageH-23*mm).toFixed(2)} cm /Im1 Do Q`);
+                    } catch(e) { imageObject = null; }
+                }
+                if (!imageObject) txt('LOGO',8,16,12,true,'0.8 0.8 0.8');
+
+                txt('LUIGGI MAMANI LOPEZ',83,8,6.5,true);
+                txt('RUT: 25.807.878-0',83,12,6.5,true);
+                txt('SANTO DOMINGO 784 LOCAL 14-24',83,16,5.6,true);
+                txt('CEL: +56945081094',83,20,6.5,true);
+                txt('LUIGGI01995@GMAIL.COM',83,24,5.8,true);
+                line(8,27,142,27,0.8);
+                txt('DATOS DE ENVIO',55,33,11,true);
+                line(8,36,142,36,0.5);
+
+                const rows = [
+                    ['DESTINATARIO:', document.getElementById('in-destinatario').value],
+                    ['RUT:', document.getElementById('in-rut').value],
+                    ['TELÉFONO:', document.getElementById('in-telefono').value],
+                    ['DIRECCIÓN:', document.getElementById('in-direccion').value],
+                    ['CIUDAD:', document.getElementById('in-ciudad').value],
+                    ['REGIÓN:', document.getElementById('in-region').value],
+                    ['OBSERVAC.:', document.getElementById('in-observaciones').value]
+                ].filter(([label,value]) => label !== 'RUT:' && label !== 'OBSERVAC.:' ? true : String(value||'').trim() !== '');
+                let y = 44;
+                for (const [label,value] of rows) {
+                    const v = String(value || '').trim().toLocaleUpperCase('es-CL');
+                    txt(label,8,y,8.3,true);
+                    const valueX = label === 'DESTINATARIO:' ? 42 : (label === 'TELÉFONO:' ? 42 : label === 'DIRECCIÓN:' ? 42 : 42);
+                    let maxChars = label === 'DIRECCIÓN:' ? 40 : 48;
+                    txt(v.slice(0,maxChars),valueX,y,9.2,true,'0 0.13 0.65');
+                    line(valueX,y+1.5,142,y+1.5,0.45);
+                    y += 8.3;
+                }
+                const content = ops.join('\n') + '\n';
+                const enc = str => {
+                    let out=''; for (let i=0;i<str.length;i++) out += String.fromCharCode(str.charCodeAt(i) <= 255 ? str.charCodeAt(i) : 63); return out;
+                };
+                const objects = [];
+                objects.push('<< /Type /Catalog /Pages 2 0 R >>');
+                objects.push('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+                objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW.toFixed(2)} ${pageH.toFixed(2)}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> ${imageObject ? '/XObject << /Im1 6 0 R >>' : ''} >> /Contents ${imageObject ? '7' : '6'} 0 R >>`);
+                objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+                objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+                if (imageObject) {
+                    objects.push(`<< /Type /XObject /Subtype /Image /Width ${imageObject.w} /Height ${imageObject.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageObject.bytes.length} >>\nstream\n${Array.from(imageObject.bytes, b=>String.fromCharCode(b)).join('')}\nendstream`);
+                }
+                const contentObjNum = imageObject ? 7 : 6;
+                objects.push(`<< /Length ${enc(content).length} >>\nstream\n${enc(content)}endstream`);
+                let pdf = '%PDF-1.4\n%âãÏÓ\n'; const offsets=[0];
+                for(let i=0;i<objects.length;i++) { offsets.push(pdf.length); pdf += `${i+1} 0 obj\n${objects[i]}\nendobj\n`; }
+                const xref = pdf.length;
+                pdf += `xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+                for(let i=1;i<offsets.length;i++) pdf += `${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
+                pdf += `trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+                const bytes = new Uint8Array(pdf.length);
+                for(let i=0;i<pdf.length;i++) bytes[i]=pdf.charCodeAt(i)&255;
+                const blob = new Blob([bytes], {type:'application/pdf'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href=url; a.download='Etiqueta_Envio.pdf';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(()=>URL.revokeObjectURL(url),3000);
+            } catch (error) {
+                alert('No se pudo generar el PDF. Prueba abrir el archivo en Chrome y vuelve a intentarlo.');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
